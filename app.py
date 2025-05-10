@@ -13,6 +13,11 @@ import ipaddress
 import plotly.express as px
 import plotly.graph_objects as go
 
+
+
+
+
+
 # NVD API endpoint
 NVD_API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 API_DELAY = 6  # Reduced from 10 to improve user experience
@@ -27,75 +32,142 @@ st.set_page_config(
 
 # Custom CSS
 st.markdown("""
-    <style>
-    /* Fond général avec image */
+<style>
+    /* Apply background image to the entire app */
     .stApp {
-        background-image: url("");
+        background-image: url("https://img.freepik.com/premium-vector/concept-destroyed-cyber-security-padlock-red-open-electric-circuits-dark-red-background_387612-36.jpg");
         background-size: cover;
+        background-position: center;
         background-repeat: no-repeat;
         background-attachment: fixed;
-        background-position: center;
-        color: #FFFFFF;
-        font-family: 'Segoe UI', sans-serif;
     }
-
-    /* Superposition pour rendre le texte lisible sur l'image */
+    
+    /* Style for the main content area */
     .main {
-        background-color: rgba(0, 0, 0, 0.75);
+        background-color: rgba(0, 0, 0, 0.5); /* Dark semi-transparent background */
         padding: 2rem;
-        border-radius: 1rem;
-    }
-
-    /* Titres */
-    h1, h2, h3, h4, h5, h6 {
-        color: #00ffcc;
-    }
-
-    /* Widgets (boutons, input...) */
-    .css-1cpxqw2, .css-14xtw13, .stButton>button {
-        background-color: #222222;
-        color: white;
-        border: 1px solid #00ffcc;
-        border-radius: 5px;
-        transition: 0.3s ease;
-    }
-
-    .stButton>button:hover {
-        background-color: #00ffcc;
-        color: black;
-    }
-
-    /* Champs de texte */
-    .stTextInput>div>div>input,
-    .stTextArea>div>textarea,
-    .stSelectbox>div>div>div {
-        background-color: #222222;
-        color: white;
-        border: 1px solid #00ffcc;
-        border-radius: 5px;
-    }
-
-    /* Tableaux et DataFrames */
-    .dataframe {
-        background-color: #111111;
-        color: white;
         border-radius: 10px;
-        padding: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Style for content blocks (will apply to scan results) */
+    .block-container {
+        background-color: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Make charts and graphs visible */
+    .stPlot {
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Make tables readable */
+    .dataframe {
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 8px;
+    }
+    
+    /* Text colors for main area */
+    h1, h2, h3, .stMarkdown p, .stTextInput label, .stTextInput p {
+        color: white !important;
+    }
+    
+    /* Text colors for sidebar */
+    .stSidebar .stMarkdown h2, .stSidebar .stMarkdown p, .stSidebar label {
+        color: black !important;
+    }
+    
+    /* Progress bar */
+    .stProgress > div > div {
+        background-color: #1e88e5;
+    }
+    
+    /* Sidebar background */
+    .stSidebar {
+        background-color: black;
+    }
+    
+    /* Severity tags */
+    .critical {
+        color: #d32f2f;
+        font-weight: bold;
+        background-color: #ffebee;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .high {
+        color: #f57c00;
+        font-weight: bold;
+        background-color: #fff3e0;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .medium {
+        color: #fbc02d;
+        font-weight: bold;
+        background-color: #fffde7;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .low {
+        color: #388e3c;
+        font-weight: bold;
+        background-color: #e8f5e9;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .na {
+        color: #757575;
+        background-color: #f5f5f5;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    
+    /* Button styling */
+    .stButton > button {
+        background-color: #1e88e5;
+        color: black;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+    
+    .stButton > button:hover {
+        background-color: #1565c0;
     }
 
-    /* Scrollbar personnalisée */
+    /* Scrollbar styling */
     ::-webkit-scrollbar {
-        width: 8px;
+        width: 12px;
     }
-    ::-webkit-scrollbar-track {
-        background: #111111;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #00ffcc;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
+    ::-webkit-scrollbar-track {
+        background-color: rgba(255, 255, 255, 0.2); /* Semi-transparent */
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: #000; /* Black */
+        border-radius: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: #333; /* Slightly lighter hover */
+    }
+
+    /* Firefox */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: #000 rgba(255, 255, 255, 0.2);
+    }
+
+</style>
+""", unsafe_allow_html=True)
 
 def validate_ip(ip):
     """Validate if the input is a valid IP address or hostname."""
