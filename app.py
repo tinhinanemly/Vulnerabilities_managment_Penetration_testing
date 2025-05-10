@@ -27,33 +27,73 @@ st.set_page_config(
 
 # Custom CSS
 st.markdown("""
-<style>
-    .reportview-container {
-        background-color: #f0f2f6;
+    <style>
+    /* Fond général avec image */
+    .stApp {
+        background-image: url("");
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-position: center;
+        color: #FFFFFF;
+        font-family: 'Segoe UI', sans-serif;
     }
+
+    /* Superposition pour rendre le texte lisible sur l'image */
     .main {
-        background-color: #ffffff;
+        background-color: rgba(0, 0, 0, 0.75);
+        padding: 2rem;
+        border-radius: 1rem;
     }
-    .stProgress > div > div {
-        background-color: #1e88e5;
+
+    /* Titres */
+    h1, h2, h3, h4, h5, h6 {
+        color: #00ffcc;
     }
-    .severity-critical {
-        color: #d32f2f;
-        font-weight: bold;
+
+    /* Widgets (boutons, input...) */
+    .css-1cpxqw2, .css-14xtw13, .stButton>button {
+        background-color: #222222;
+        color: white;
+        border: 1px solid #00ffcc;
+        border-radius: 5px;
+        transition: 0.3s ease;
     }
-    .severity-high {
-        color: #f57c00;
-        font-weight: bold;
+
+    .stButton>button:hover {
+        background-color: #00ffcc;
+        color: black;
     }
-    .severity-medium {
-        color: #fbc02d;
-        font-weight: bold;
+
+    /* Champs de texte */
+    .stTextInput>div>div>input,
+    .stTextArea>div>textarea,
+    .stSelectbox>div>div>div {
+        background-color: #222222;
+        color: white;
+        border: 1px solid #00ffcc;
+        border-radius: 5px;
     }
-    .severity-low {
-        color: #388e3c;
-        font-weight: bold;
+
+    /* Tableaux et DataFrames */
+    .dataframe {
+        background-color: #111111;
+        color: white;
+        border-radius: 10px;
+        padding: 10px;
     }
-</style>
+
+    /* Scrollbar personnalisée */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #111111;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #00ffcc;
+    }
+    </style>
 """, unsafe_allow_html=True)
 
 
@@ -412,9 +452,10 @@ def main():
             # Convert results to DataFrame for easier manipulation
             df = pd.DataFrame(results)
             
-            # Sort by CVSS score
+            # Sort by CVSS score - Make sure to handle non-numeric values
+            # Convert CVSS to numeric, handling errors
             df['cvss_num'] = pd.to_numeric(df['cvss'], errors='coerce')
-            df = df.sort_values('cvss_num', ascending=False).drop('cvss_num', axis=1)
+            df = df.sort_values('cvss_num', ascending=False)
             
             # Create summary
             st.subheader("Vulnerability Summary")
@@ -460,29 +501,33 @@ def main():
                 st.plotly_chart(fig, use_container_width=True)
             
             with col2:
-                # Create CVSS distribution
-                fig = go.Figure()
+                # Create CVSS distribution - Make sure the column exists
+                if 'cvss_num' in df.columns and not df['cvss_num'].isna().all():
+                    fig = go.Figure()
+                    
+                    fig.add_trace(go.Box(
+                        y=df['cvss_num'].dropna(),
+                        name='CVSS Scores',
+                        marker_color='#1e88e5',
+                        boxmean=True
+                    ))
+                    
+                    fig.update_layout(
+                        title_text='CVSS Score Distribution',
+                        yaxis_title='CVSS Score',
+                        yaxis=dict(
+                            range=[0, 10]
+                        ),
+                        showlegend=False
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.warning("No valid CVSS scores available for distribution chart.")
                 
-                fig.add_trace(go.Box(
-                    y=df['cvss_num'].dropna(),
-                    name='CVSS Scores',
-                    marker_color='#1e88e5',
-                    boxmean=True
-                ))
-                
-                fig.update_layout(
-                    title_text='CVSS Score Distribution',
-                    yaxis_title='CVSS Score',
-                    yaxis=dict(
-                        range=[0, 10]
-                    ),
-                    showlegend=False
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Summary stats
-                st.metric("Highest CVSS Score", df['cvss'].max())
+                # Summary stats - Handle non-numeric values
+                max_cvss = df['cvss'].max() if not df['cvss_num'].isna().all() else "N/A"
+                st.metric("Highest CVSS Score", max_cvss)
                 
                 # Count total by severity
                 critical = len(df[df['severity'] == 'CRITICAL'])
@@ -519,20 +564,25 @@ def main():
                         for ref in info['references']:
                             st.markdown(f"* [{ref}]({ref})")
             
-            # Export options
-            st.subheader("Export Results")
+            # Download options
+            st.subheader("Download Options")
             
             col1, col2 = st.columns(2)
             
             with col1:
-                # Generate CSV
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="Download CSV",
-                    data=csv,
-                    file_name=f"vulnerability_scan_{target_ip}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv",
-                )
+                # Add XML download button
+                try:
+                    with open(xml_file, 'r') as f:
+                        xml_content = f.read()
+                    
+                    st.download_button(
+                        label="Download Raw XML Scan File",
+                        data=xml_content,
+                        file_name=f"nmap_scan_{target_ip}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xml",
+                        mime="application/xml",
+                    )
+                except Exception as e:
+                    st.error(f"Could not prepare XML file for download: {str(e)}")
             
             with col2:
                 # Generate TXT report
@@ -576,7 +626,7 @@ def main():
                 
                 txt_report = generate_text_report(results, target_ip)
                 st.download_button(
-                    label="Download TXT Report",
+                    label="Download Report TXT",
                     data=txt_report,
                     file_name=f"vulnerability_report_{target_ip}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                     mime="text/plain",
@@ -585,11 +635,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-   
-   
-
-        
-
-
