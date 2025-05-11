@@ -28,7 +28,8 @@ Vulnerability Scanner is a  tool that scans a target IP address for vulnerabilit
 Run the application using the following command:
 
 ```bash
-python cve_scanner.py <target_ip_or_hostname> [options]
+streamlit run app.py
+
 ```
 
 ### Example Commands
